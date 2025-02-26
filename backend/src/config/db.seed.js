@@ -11,7 +11,6 @@
 
 require('dotenv').config();
 
-const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const { faker } = require('@faker-js/faker');
 const UserModel = require("../models/user.model.js");
@@ -23,8 +22,7 @@ const MenuModel = require("../models/menu.model.js");
 async function createUser() {
 
     const total = await UserModel.countDocuments({});
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash("Qwerty12345#!", salt);
+    const hashedPassword = bcrypt.hashSync("Qwerty12345#!", 10)
     const genders = ["male", "female"]
     const max = 10
 
@@ -200,17 +198,10 @@ async function createOrder() {
 
 
 async function run() {
-    await mongoose.connect(process.env.DB_DSN, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-    });
     await createUser()
     await createTable()
     await createMenu()
     await createOrder()
-    setTimeout(async () => {
-        await mongoose.connection.close();
-    }, 5);
 }
 
 module.exports = { run }

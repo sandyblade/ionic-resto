@@ -11,6 +11,8 @@
 
 const express = require('express');
 const bodyParser = require('body-parser');
+const cors = require("cors");
+const jwt = require('./config/jwt.js');
 const app = express();
 
 const dbConfig = require('./config/db.config');
@@ -19,9 +21,7 @@ const mongoose = require('mongoose');
 const PORT = process.env.APP_PORT || 8000;
 
 mongoose.Promise = global.Promise;
-mongoose.connect(dbConfig.url, {
-    useNewUrlParser: true
-}).then(() => {
+mongoose.connect(dbConfig.url).then(() => {
     console.log("Databse Connected Successfully!!");
 }).catch(err => {
     console.log('Could not connect to the database', err);
@@ -30,12 +30,10 @@ mongoose.connect(dbConfig.url, {
 
 app.use(bodyParser.urlencoded({ extended: true }))
 app.use(bodyParser.json())
+app.use(cors());
+app.use(jwt());
 
 require("./config/route.config")(app);
-
-app.get('/', (req, res) => {
-    res.json({ "message": "Success, Connection Establishment!" });
-});
 
 app.use(function (err, req, res, next) {
     if (err.status !== undefined && err.status != 200) {
