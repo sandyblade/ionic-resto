@@ -16,8 +16,8 @@ const Menu = require('../models/menu.model')
 async function summary(req, res) {
 
     let getTotal = await Order.aggregate([
-        { $match: { status: 1 } },  // Filter documents where status = 1
-        { $group: { _id: null, totalSum: { $sum: "$total_paid" } } } // Sum the "total" field
+        { $match: { status: 1 } },  
+        { $group: { _id: null, totalSum: { $sum: "$total_paid" } } } 
     ]);
 
     let total_orders = await Order.countDocuments({ status : 1 })

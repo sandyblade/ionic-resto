@@ -154,7 +154,7 @@ async function createOrder() {
     if (total === 0) {
         for (let i = 1; i <= 10; i++) {
 
-            let order_number = `${new Date().getFullYear()}${faker.number.int({ min: 100000000000000, max: 900000000000000 })}`
+            let order_number = `${new Date().getFullYear()}${faker.number.int({ min: 1000000000000, max: 9000000000000 })}`
             let table = faker.number.int({ min: 1, max: 10 })
             let table_number = table != 10 ? "T0" + table : "T" + table
             let order_type = "Dine In"

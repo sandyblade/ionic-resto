@@ -36,8 +36,8 @@ router.get('/menu/list', menu.list);
 
 // Order Section
 router.post('/order/save', order.save);
-router.post('/order/checkout/:id', order.checkout);
-router.get('/order/cancel/:id', order.cancel);
+router.delete('/order/cancel/:id', order.cancel);
+router.get('/order/detail/:id', order.detail);
 
 // Profile Section
 router.get('/profile/detail', profile.detail);
