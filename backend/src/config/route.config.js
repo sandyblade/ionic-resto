@@ -17,6 +17,12 @@ const menu = require("../controllers/menu.controller.js");
 const order = require("../controllers/order.controller.js");
 const profile = require("../controllers/profile.controller.js");
 
+// Check Connection
+router.get("/ping", function (req, res) {
+    res.status(200).send({ message: "Connected Established !!" });
+    return;
+});
+
 // Auth Section
 router.post('/auth/login', auth.login);
 router.post('/auth/email/forgot', auth.forgot);

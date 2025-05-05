@@ -22,16 +22,17 @@ const MenuModel = require("../models/menu.model.js");
 async function createUser() {
 
     const total = await UserModel.countDocuments({});
-    const hashedPassword = bcrypt.hashSync("Qwerty12345#!", 10)
+    const hashedPassword = bcrypt.hashSync("Qwerty123!", 10)
     const genders = ["male", "female"]
     const max = 10
 
     if (total === 0) {
         for (let i = 1; i <= max; i++) {
             let genderIndex = Math.floor(Math.random() * (1 - 0 + 1)) + 0;
+            let email =  i === 1 ? "admin@administrator.example.com" : faker.internet.email()
             let formData = {
                 "name": faker.person.fullName({ sex: genders[genderIndex] }),
-                "email": i === 1 ? "admin@administrator.example.com" : faker.internet.email(),
+                "email": email.toLowerCase(),
                 "password": hashedPassword,
                 "role": i === 1 ? "ROLE_ADMIN" : "ROLE_USER",
                 "gender": genders[genderIndex],

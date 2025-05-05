@@ -107,7 +107,7 @@ async function forgot(req, res) {
     user.forgot_password_expired = today
     await user.save()
 
-    res.status(200).send({ message: "We have e-mailed your password reset link!" });
+    res.status(200).send({ message: "We have e-mailed your password reset link!", token: token });
     return;
 }
 
