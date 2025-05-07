@@ -1,5 +1,5 @@
 {
-  "name": "frontend",
+  "name": "ionic-resto-demo",
   "integrations": {
     "capacitor": {}
   },
