@@ -21,28 +21,72 @@ import { mailUnread, people, send } from 'ionicons/icons';
 import Logo from '../logo.png'
 import { IonThumbnail } from '@ionic/react';
 import { useState } from "react";
+import Service from "../Service";
+
 
 const ForgotPassword: React.FC = () => {
 
     const history = useHistory();
     const [loading, setLoading] = useState(false);
-    const [toast] = useIonToast();
+    const [email, setEmail] = useState('')
+    const [present] = useIonToast();
 
     const handleLogin = () => {
         history.push("/login");
     }
 
     const handleForgotPassword = () => {
-        setLoading(true)
-        setTimeout(() => {
-            toast({
-                message: 'We have e-mailed your password reset link!',
-                duration: 1500,
-                position: 'top',
-            });
-            history.push("/reset-password");
-        }, 3000)
+        let validateEmail = validEmail(email)
+        if (validateEmail) {
+            presentToast(validateEmail, 'bottom', 'danger')
+        } else {
+            let form = {
+                email: email
+            }
+            setLoading(true)
+            setTimeout(async () => {
+                await Service.auth.forgot(form)
+                    .then(async (response) => {
+                        setLoading(false)
+                        let messsage = response.data.message
+                        let token = response.data.token
+                        presentToast(messsage, 'bottom', 'success')
+                        setTimeout(() => {
+                            history.push(`/reset-password/${token}`);
+                        }, 2000)
+                    })
+                    .catch((error) => {
+                        setLoading(false)
+                        presentToast(error.response.data?.error, 'bottom', 'danger')
+                    })
+            }, 2000)
+        }
     }
+
+    const presentToast = (message: string, position: 'top' | 'middle' | 'bottom', color: string) => {
+        present({
+            message: message,
+            duration: 1000,
+            position: position,
+            color: color
+        });
+    };
+
+    const validEmail = (input: any): string => {
+        if (input === undefined || input === null || input === '') {
+            return "Please fill out this email field"
+        } else if (!formatEmail(input)) {
+            return "Invalid email format"
+        } else {
+            return ""
+        }
+    }
+
+    const formatEmail = (email: string) => {
+        return email.match(
+            /^(?=.{1,254}$)(?=.{1,64}@)[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
+        );
+    };
 
     return (
         <IonPage>
@@ -64,7 +108,7 @@ const ForgotPassword: React.FC = () => {
                             </IonThumbnail>
                             <IonList style={{ marginTop: '20px' }}>
                                 <IonItem>
-                                    <IonInput disabled={loading} labelPlacement="stacked" clearInput={true} id="txtEmail" type="email" placeholder="Please Enter Your E-Mail Address">
+                                    <IonInput disabled={loading} onIonChange={(e) => { setEmail(String(e.target.value)) }} labelPlacement="stacked" clearInput={true} id="txtEmail" type="email" placeholder="Please Enter Your E-Mail Address">
                                         <IonIcon slot="start" icon={mailUnread} aria-hidden="true"></IonIcon>
                                         <div slot="label">
                                             E-Mail Address <IonText color="danger">*</IonText>

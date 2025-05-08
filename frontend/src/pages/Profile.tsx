@@ -25,6 +25,7 @@ import {
 import { useState, useEffect } from "react";
 import { mailUnread, people, call, navigate, person, map, lockOpen, lockClosed, send, logIn } from 'ionicons/icons';
 import { useHistory } from "react-router-dom";
+import Service from "../Service";
 
 interface userInterface {
     email: string,
@@ -41,18 +42,162 @@ const Profile: React.FC = () => {
     const [modalPassword, setModalPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [toast] = useIonToast();
-    const user: userInterface | null = (localStorage.getItem('auth_user') !== undefined && localStorage.getItem('auth_user') !== null) ? JSON.parse(String(localStorage.getItem('auth_user'))) : {}
+    const user: userInterface | null = (localStorage.getItem('auth_user') !== undefined && localStorage.getItem('auth_user') !== null) ? JSON.parse(String(localStorage.getItem('auth_user'))) : null
+    const [currentPassword, setCurrentPassword] = useState('')
+    const [password, setPassword] = useState('')
+    const [passwordConfirm, setPasswordConfirm] = useState('')
+    const [name, setName] = useState('')
+    const [gender, setGender] = useState('')
+    const [phone, setPhone] = useState(0)
+    const [email, setEmail] = useState('')
+    const [address, setAddress] = useState('')
+
+    const validPassword = (input: any): string => {
+        if (input === undefined || input === null || input === '') {
+            return "Please fill out this password field"
+        } else if (input.length <= 6) {
+            return "Password must be at least 6 characters long."
+        } else {
+            return ""
+        }
+    }
 
     const handleSubmit = () => {
-        setLoading(true)
-        setTimeout(() => {
-            setLoading(false)
+        let validateEmail = validEmail(email)
+        if (!name) {
             toast({
-                message: 'Success, your account profile has been changed !',
-                duration: 1500,
-                position: 'top',
+                message: 'Please fill out this full name field',
+                duration: 1000,
+                position: 'bottom',
+                color: 'danger'
             });
-        }, 3000)
+        } else if (!gender) {
+            toast({
+                message: 'Please fill out this gender field',
+                duration: 1000,
+                position: 'bottom',
+                color: 'danger'
+            });
+        } else if (!phone) {
+            toast({
+                message: 'Please fill out this phone number field',
+                duration: 1000,
+                position: 'bottom',
+                color: 'danger'
+            });
+        } else if (validateEmail) {
+            toast({
+                message: validateEmail,
+                duration: 1000,
+                position: 'bottom',
+                color: 'danger'
+            });
+        } else if (!address) {
+            toast({
+                message: 'Please fill out this street address field',
+                duration: 1000,
+                position: 'bottom',
+                color: 'danger'
+            });
+        } else {
+            let formData = {
+                email: email,
+                name: name,
+                gender: gender,
+                phone: phone,
+                address: address
+            }
+            setLoading(true)
+            setTimeout(async () => {
+                await Service.profile.changeProfile(formData)
+                    .then(async (response) => {
+                        setLoading(false)
+                        let messsage = response.data.message
+
+                        console.log(response)
+
+                        toast({
+                            message: messsage,
+                            duration: 1000,
+                            position: 'bottom',
+                            color: 'success'
+                        });
+                    })
+                    .catch((error) => {
+                        setLoading(false)
+                        console.log(error.response.data.error.phone)
+                        // toast({
+                        //     message: error.response.data?.error,
+                        //     duration: 1000,
+                        //     position: 'bottom',
+                        //     color: 'danger'
+                        // });
+                    })
+            }, 2000)
+        }
+    }
+
+    const handleSubmitPassword = () => {
+        let validatePassword = validPassword(password)
+        if (!currentPassword) {
+            toast({
+                message: 'Please fill out this current password field',
+                duration: 1000,
+                position: 'bottom',
+                color: 'danger'
+            });
+        } else if (validatePassword) {
+            toast({
+                message: validatePassword,
+                duration: 1000,
+                position: 'bottom',
+                color: 'danger'
+            });
+        } else if (!passwordConfirm) {
+            toast({
+                message: 'Please fill out this confirm password field',
+                duration: 1000,
+                position: 'bottom',
+                color: 'danger'
+            });
+        } else if (password != passwordConfirm) {
+            toast({
+                message: 'Please make sure your passwords match.',
+                duration: 1000,
+                position: 'bottom',
+                color: 'danger'
+            });
+        } else {
+            let formData = {
+                currentPassword: currentPassword,
+                password: password,
+                confirmPassword: passwordConfirm
+            }
+            setLoading(true)
+            setTimeout(async () => {
+                await Service.profile.changePassword(formData)
+                    .then(async (response) => {
+                        setLoading(false)
+                        let messsage = response.data.message
+                        toast({
+                            message: messsage,
+                            duration: 1000,
+                            position: 'bottom',
+                            color: 'success'
+                        });
+                        setModalPassword(false)
+                    })
+                    .catch((error) => {
+                        setLoading(false)
+                        toast({
+                            message: error.response.data?.error,
+                            duration: 1000,
+                            position: 'bottom',
+                            color: 'danger'
+                        });
+                    })
+            }, 2000)
+        }
     }
 
     const handleLogOut = () => {
@@ -61,6 +206,7 @@ const Profile: React.FC = () => {
             duration: 3000,
             spinner: "circular",
             onDidDismiss: (() => {
+
                 if (localStorage.getItem('auth_token')) {
                     localStorage.removeItem('auth_token')
                 }
@@ -74,24 +220,32 @@ const Profile: React.FC = () => {
         });
     }
 
-    const handleSubmitPassword = () => {
-        setLoading(true)
-        setTimeout(() => {
-            setLoading(false)
-            setModalPassword(false)
-            toast({
-                message: 'Success, your account password has been changed. !',
-                duration: 1500,
-                position: 'top',
-            });
-        }, 3000)
+    const validEmail = (input: any): string => {
+        if (input === undefined || input === null || input === '') {
+            return "Please fill out this email field"
+        } else if (!formatEmail(input)) {
+            return "Invalid email format"
+        } else {
+            return ""
+        }
     }
 
+    const formatEmail = (email: string) => {
+        return email.match(
+            /^(?=.{1,254}$)(?=.{1,64}@)[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
+        );
+    };
+
     useEffect(() => {
-        return () => {
-            setLoading(false)
-        };
+        if (user !== null) {
+            setName(user.name)
+            setPhone(parseInt(user.phone))
+            setEmail(user.email)
+            setAddress(user.address)
+            setGender(user.gender)
+        }
     }, []);
+
 
     return (
         <>
@@ -105,9 +259,10 @@ const Profile: React.FC = () => {
                                     id="txtName"
                                     clearInput={true}
                                     disabled={loading}
-                                    value={user?.name}
+                                    value={name}
                                     type="text"
                                     placeholder="Please Enter Your Name"
+                                    onIonChange={(e) => { setName(String(e.target.value)) }}
                                 >
                                     <IonIcon slot="start" icon={person} aria-hidden="true"></IonIcon>
                                     <div slot="label">
@@ -119,7 +274,7 @@ const Profile: React.FC = () => {
 
                         <IonList style={{ marginTop: '10px' }}>
                             <IonItem>
-                                <IonSelect placeholder="Please Select Your Gender" disabled={loading} labelPlacement='stacked' value={user?.gender}>
+                                <IonSelect onIonChange={(e) => { setGender(String(e.target.value)) }} placeholder="Please Select Your Gender" disabled={loading} labelPlacement='stacked' value={gender}>
                                     <IonIcon slot="start" icon={people} aria-hidden="true"></IonIcon>
                                     <div slot="label">
                                         Gender <IonText color="danger">*</IonText>
@@ -137,9 +292,10 @@ const Profile: React.FC = () => {
                                     id="txtPhone"
                                     clearInput={true}
                                     disabled={loading}
-                                    value={user?.phone}
+                                    value={phone}
                                     type="number"
                                     placeholder="Please Enter Your Phone Number"
+                                    onIonChange={(e) => { setPhone(parseInt(String(e.target.value))) }}
                                 >
                                     <IonIcon slot="start" icon={call} aria-hidden="true"></IonIcon>
                                     <div slot="label">
@@ -155,9 +311,10 @@ const Profile: React.FC = () => {
                                     id="txtEmail"
                                     clearInput={true}
                                     disabled={loading}
-                                    value={user?.email}
+                                    value={email}
                                     type="email"
                                     placeholder="Please Enter Your E-Mail Address"
+                                    onIonChange={(e) => { setEmail(String(e.target.value)) }}
                                 >
                                     <IonIcon slot="start" icon={mailUnread} aria-hidden="true"></IonIcon>
                                     <div slot="label">
@@ -168,7 +325,7 @@ const Profile: React.FC = () => {
                         </IonList>
                         <IonList style={{ marginTop: '10px' }}>
                             <IonItem>
-                                <IonTextarea labelPlacement="stacked" disabled={loading} value={user?.address}>
+                                <IonTextarea onIonChange={(e) => { setAddress(String(e.target.value)) }} labelPlacement="stacked" disabled={loading} value={address}>
                                     <IonIcon slot="start" icon={map} aria-hidden="true"></IonIcon>
                                     <div slot="label">
                                         Street Address <IonText color="danger">*</IonText>
@@ -210,7 +367,7 @@ const Profile: React.FC = () => {
                                 </IonText>
                                 <IonList style={{ marginTop: '20px' }}>
                                     <IonItem>
-                                        <IonInput disabled={loading} labelPlacement="stacked" clearInput={true} id="txtPasswordOld" type="password" placeholder="Current Password">
+                                        <IonInput disabled={loading} onIonChange={(e) => { setCurrentPassword(String(e.target.value)) }} labelPlacement="stacked" clearInput={true} id="txtPasswordOld" type="password" placeholder="Current Password">
                                             <IonIcon slot="start" icon={lockClosed} aria-hidden="true"></IonIcon>
                                             <IonInputPasswordToggle slot="end"></IonInputPasswordToggle>
                                             <div slot="label">
@@ -219,7 +376,7 @@ const Profile: React.FC = () => {
                                         </IonInput>
                                     </IonItem>
                                     <IonItem style={{ marginTop: '2%' }}>
-                                        <IonInput disabled={loading} labelPlacement="stacked" clearInput={true} id="txtPassword" type="password" placeholder="New Password">
+                                        <IonInput disabled={loading} onIonChange={(e) => { setPassword(String(e.target.value)) }} labelPlacement="stacked" clearInput={true} id="txtPassword" type="password" placeholder="New Password">
                                             <IonIcon slot="start" icon={lockClosed} aria-hidden="true"></IonIcon>
                                             <IonInputPasswordToggle slot="end"></IonInputPasswordToggle>
                                             <div slot="label">
@@ -228,7 +385,7 @@ const Profile: React.FC = () => {
                                         </IonInput>
                                     </IonItem>
                                     <IonItem style={{ marginTop: '2%' }}>
-                                        <IonInput disabled={loading} labelPlacement="stacked" clearInput={true} id="txtPasswordConfirm" type="password" placeholder="Confirm New Password ">
+                                        <IonInput disabled={loading} onIonChange={(e) => { setPasswordConfirm(String(e.target.value)) }} labelPlacement="stacked" clearInput={true} id="txtPasswordConfirm" type="password" placeholder="Confirm New Password ">
                                             <IonIcon slot="start" icon={lockClosed} aria-hidden="true"></IonIcon>
                                             <IonInputPasswordToggle slot="end"></IonInputPasswordToggle>
                                             <div slot="label">

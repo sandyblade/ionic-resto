@@ -52,7 +52,7 @@ const MainApp: React.FC = () => {
             <Route exact path="/forgot-password">
                 <ForgotPassword />
             </Route>
-            <Route exact path="/reset-password">
+            <Route exact path="/reset-password/:token">
                 <ResetPassword />
             </Route>
             <Route exact path="/main">
