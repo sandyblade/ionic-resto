@@ -14,14 +14,20 @@ import {
     IonLabel
 } from '@ionic/react';
 import { fastFood, restaurant, starOutline, star, wallet, rocket, bag, speedometer } from 'ionicons/icons';
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import MenuList from '../stores/Menu';
 import Table from '../table.png'
 
-const Home: React.FC = () => {
+const Home = forwardRef((props, ref) => {
 
     const [items, setItems] = useState<any[]>([]);
     const [tables, setTables] = useState<any[]>([]);
+
+    useImperativeHandle(ref, () => ({
+        setLoadData() {
+            console.log('load data.....')
+        }
+    }));
 
     const generateItems = () => {
 
@@ -223,6 +229,7 @@ const Home: React.FC = () => {
         </div>
 
     );
-}
+
+})
 
 export default Home;

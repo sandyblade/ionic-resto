@@ -91,6 +91,10 @@ const History: React.FC = () => {
         setModalView(true)
     }
 
+    const loadContent = (): void => {
+        console.log("History Loaded")
+    }
+
     useEffect(() => {
         generateItems();
         return () => {

@@ -62,7 +62,7 @@ const Login: React.FC = () => {
                         }
 
                         setTimeout(() => {
-                            history.push("/main");
+                            history.push("/main?tab=home");
                         }, 1500)
 
                     })

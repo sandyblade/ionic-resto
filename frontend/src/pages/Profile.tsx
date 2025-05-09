@@ -125,13 +125,14 @@ const Profile: React.FC = () => {
                     })
                     .catch((error) => {
                         setLoading(false)
-                        console.log(error.response.data.error.phone)
-                        // toast({
-                        //     message: error.response.data?.error,
-                        //     duration: 1000,
-                        //     position: 'bottom',
-                        //     color: 'danger'
-                        // });
+                        Object.keys(error.response.data.error).map((key) => {
+                            toast({
+                                message: error.response.data.error[key][0],
+                                duration: 1000,
+                                position: 'bottom',
+                                color: 'danger'
+                            });
+                        })
                     })
             }, 2000)
         }

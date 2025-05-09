@@ -29,19 +29,18 @@ import Profile from '../pages/Profile';
 import DetailOrder from './DetailOrder';
 import CreateOrder from './CreateOrder';
 import CheckoutOrder from './CheckoutOrder';
-import { useState, useEffect, useCallback } from "react";
-
+import { useState, useEffect, useCallback, useRef } from "react";
 
 const MainLayout: React.FC = () => {
 
-
     const [title, setTitle] = useState('Home');
+    const [tab, setTab] = useState('home');
     const [modalCart, setModalCart] = useState(false);
     const [modalView, setModalView] = useState(false);
     const [modalCheckout, setModalCheckout] = useState(false);
     const [modalCreate, setModalCreate] = useState(false);
     const [items, setItems] = useState<string[]>([]);
-
+    const homeRef = useRef<any>(null);
 
     const generateItems = (max: number) => {
         const newItems = [];
@@ -56,6 +55,8 @@ const MainLayout: React.FC = () => {
         let tabTitle = event.detail.tab
         let tabName = String(tabTitle).charAt(0).toUpperCase() + String(tabTitle).slice(1);
         setTitle(tabName)
+        setTab(tabTitle)
+        homeRef.current?.setLoadData()
     }
 
     const finishOrder = useCallback(() => {
@@ -87,7 +88,7 @@ const MainLayout: React.FC = () => {
                     <IonTab tab="home">
                         <div id="home-page">
                             <IonContent fullscreen={true}>
-                                <Home />
+                                <Home ref={homeRef} />
                             </IonContent>
                         </div>
                     </IonTab>
