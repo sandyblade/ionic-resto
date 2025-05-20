@@ -34,8 +34,6 @@ router.get('/history/detail/:id', history.detail);
 
 // Home Section
 router.get('/home/summary', home.summary);
-router.get('/home/table', home.table);
-router.get('/home/sell', home.sell);
 
 // Menu Section
 router.get('/menu/list', menu.list);

@@ -66,10 +66,47 @@ const profile = {
     },
 }
 
+const home = {
+    summary: async () => {
+        return await http().get("/api/home/summary")
+    },
+}
+
+const history = {
+    list: async () => {
+        return await http().get("/api/history/list")
+    },
+    detail: async (id: number) => {
+        return await http().get(`/api/history/detail/${id}`)
+    },
+}
+
+const menu = {
+    list: async () => {
+        return await http().get("/api/menu/list")
+    },
+}
+
+const order = {
+    save: async (body: unknown) => {
+        return await http().post("/api/order/save", body)
+    },
+    cancel: async (id: number) => {
+        return await http().delete(`/api/order/cancel/${id}`)
+    },
+    detail: async (id: number) => {
+        return await http().get(`/api/order/detail/${id}`)
+    },
+}
+
 export default {
     ping,
     getUpload,
     expiredMessage,
     auth,
-    profile
+    profile,
+    home,
+    history,
+    order,
+    menu
 }

@@ -65,7 +65,7 @@ async function login(req, res) {
     let token = jwt.sign({
         sub: user.id
     }, process.env.JWT_SECRET_KEY, {
-        expiresIn: '1d'
+        expiresIn: '365d'
     });
     res.send({
         ...omitPassword(user),

@@ -118,7 +118,7 @@ async function createMenu() {
             {
                 name: "Steak",
                 price: 4.9,
-                image: "https://5an9y4lf0n50.github.io/demo-images/demo-resto/steak.jpg",
+                image: "https://5an9y4lf0n50.github.io/demo-images/demo-resto/steak.jpeg",
                 category: 'Main Course',
                 description: faker.lorem.sentence()
             },
