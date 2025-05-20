@@ -141,7 +141,7 @@ ionic cordova run ios
 
 <strong>To login in application, please use these credential : </strong> </br>
 email : admin@administrator.example.com </br>
-password : Qwerty12345#! </br>
+password : Qwerty123! </br>
 
 
 #### 8. Access application by entering [https://localhost:5173](https://localhost:5173) in the browser.
