@@ -73,17 +73,17 @@ const home = {
 }
 
 const history = {
-    list: async () => {
-        return await http().get("/api/history/list")
+    list: async (params: string) => {
+        return await http().get(`/api/history/list?${params}`)
     },
-    detail: async (id: number) => {
+    detail: async (id: string) => {
         return await http().get(`/api/history/detail/${id}`)
     },
 }
 
 const menu = {
     list: async () => {
-        return await http().get("/api/menu/list")
+        return await http().get('/api/menu/list')
     },
 }
 
@@ -91,10 +91,10 @@ const order = {
     save: async (body: unknown) => {
         return await http().post("/api/order/save", body)
     },
-    cancel: async (id: number) => {
+    cancel: async (id: string) => {
         return await http().delete(`/api/order/cancel/${id}`)
     },
-    detail: async (id: number) => {
+    detail: async (id: string) => {
         return await http().get(`/api/order/detail/${id}`)
     },
 }

@@ -42,7 +42,7 @@ const MainLayout: React.FC = () => {
     const [items, setItems] = useState<string[]>([]);
     const homeRef = useRef<any>(null);
     const historyRef = useRef<any>(null);
-
+    const menuRef = useRef<any>(null);
 
     const generateItems = (max: number) => {
         const newItems = [];
@@ -62,6 +62,8 @@ const MainLayout: React.FC = () => {
             homeRef.current?.setLoadData()
         } else if (tabTitle === 'history') {
             historyRef.current?.setLoadData()
+        } else if (tabTitle === 'menu') {
+            menuRef.current?.setLoadData()
         }
     }
 
@@ -108,7 +110,7 @@ const MainLayout: React.FC = () => {
                     <IonTab tab="menu">
                         <div id="menu-page">
                             <IonContent fullscreen={true}>
-                                <Menu />
+                                <Menu ref={menuRef} />
                             </IonContent>
                         </div>
                     </IonTab>
@@ -167,7 +169,7 @@ const MainLayout: React.FC = () => {
                                     <IonCardTitle>{item}</IonCardTitle>
                                 </IonCardHeader>
                                 <IonCardContent>
-                                    <DetailOrder />
+
                                 </IonCardContent>
                                 <div style={{ textAlign: 'center' }}>
                                     <IonButton onClick={() => setModalView(true)} fill="clear" color={"warning"} size='small'><IonIcon icon={search} />{' '}View</IonButton>
@@ -192,7 +194,7 @@ const MainLayout: React.FC = () => {
                                 <IonCardTitle>{"TABLE 01"}</IonCardTitle>
                             </IonCardHeader>
                             <IonCardContent>
-                                <DetailOrder />
+
                             </IonCardContent>
                             <div style={{ textAlign: 'center' }}>
                                 <IonButton onClick={() => setModalCheckout(true)} fill="clear" color={"success"} size='small'><IonIcon icon={wallet} />{' '}Checkout</IonButton>

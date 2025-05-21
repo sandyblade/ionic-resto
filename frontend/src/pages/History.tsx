@@ -18,11 +18,15 @@ import {
     IonCardTitle,
     IonModal,
     IonText,
-    IonAlert
+    IonAlert,
+    useIonLoading,
+    IonInfiniteScroll,
+    IonInfiniteScrollContent,
 } from '@ionic/react';
 
+import queryString from 'query-string'
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
-import { search, fastFood, rocket } from 'ionicons/icons';
+import { fastFood, rocket } from 'ionicons/icons';
 import DetailOrder from '../components/DetailOrder';
 import { Shimmer } from 'react-shimmer'
 import Service from "../Service"
@@ -30,9 +34,15 @@ import Service from "../Service"
 const History = forwardRef((props, ref) => {
 
     const [loading, setLoading] = useState(true)
-    const [loadingOrder, setLoadingOrder] = useState(true)
     const [items, setItems] = useState<any[]>([]);
+    const [cart, setCart] = useState<any[]>([]);
+    const [order, setOrder] = useState<any>();
     const [errorReseponse, setErrorResponse] = useState('')
+    const [page, setPage] = useState(1)
+    const [limit, setLimit] = useState(10)
+    const [search, setSearch] = useState('')
+    const [modalView, setModalView] = useState(false);
+    const [present, dismiss] = useIonLoading();
 
     useImperativeHandle(ref, () => ({
         setLoadData() {
@@ -41,11 +51,26 @@ const History = forwardRef((props, ref) => {
     }));
 
     const loadData = async () => {
+
+        let params: any = {
+            page: page,
+            limit: limit
+        }
+
+        if (search) {
+            params = {
+                ...params,
+                search: search
+            }
+        }
+
+        const filterQueryParam = decodeURIComponent(queryString.stringify(params))
+
         setLoading(true)
-        await Service.history.list()
+        await Service.history.list(filterQueryParam)
             .then((response) => {
                 const data = response.data
-                setItems(data)
+                setItems([...items, ...data])
                 setTimeout(() => {
                     setLoading(false)
                 }, 1500)
@@ -56,16 +81,23 @@ const History = forwardRef((props, ref) => {
             })
     }
 
-    const handleInput = (event: any) => {
-        if (event.target.value) {
-
-        } else {
-            loadData()
-        }
-    }
-
-    const handleView = (event: any, order: any) => {
-
+    const handleView = async (event: any, id: string) => {
+        const e = event
+        e.preventDefault();
+        present({ message: 'Please Wait.....', duration: 0 });
+        await Service.order.detail(id)
+            .then((response) => {
+                const data = response.data
+                setOrder(data.order)
+                setCart(data.cart)
+                setTimeout(() => {
+                    dismiss()
+                    setModalView(true)
+                }, 1500)
+            })
+            .catch((error) => {
+                console.log(error)
+            })
     }
 
     useEffect(() => {
@@ -73,14 +105,28 @@ const History = forwardRef((props, ref) => {
         return () => {
             setItems([])
             setLoading(false)
-            setLoadingOrder(false)
+            setPage(1)
+            setLimit(10)
+            setSearch('')
+            setCart([])
+            setOrder({})
         };
     }, []);
 
     return (
         <>
             <div style={{ marginTop: '70px' }}>
-                <IonSearchbar placeholder="Search" showClearButton="always" debounce={1000} onIonInput={(event) => handleInput(event)}></IonSearchbar>
+                <IonSearchbar
+                    onIonClear={() => {
+                        setSearch('')
+                        setTimeout(loadData)
+                    }} onIonInput={(event: Event) => {
+                        const value = (event.target as HTMLIonInputElement).value as string
+                        if (value !== null && value !== '') {
+                            setSearch(value)
+                            setTimeout(loadData)
+                        }
+                    }} placeholder="Search" showClearButton="always" debounce={1000}></IonSearchbar>
             </div>
             <div className='ion-no-margin'>
                 {loading ? <>
@@ -102,7 +148,7 @@ const History = forwardRef((props, ref) => {
                             <IonCardContent className='ion-no-padding'>
                                 <IonList inset={true} lines="none">
                                     <IonItem>
-                                        <IonLabel>Order ID</IonLabel>
+                                        <IonLabel>Order ID {++index}</IonLabel>
                                         <IonNote slot="end">{item.order_number}</IonNote>
                                     </IonItem>
                                     <IonItem>
@@ -139,7 +185,7 @@ const History = forwardRef((props, ref) => {
                                     </IonItem>
                                 </IonList>
                             </IonCardContent>
-                            <IonButton expand="full" color="dark" onClick={(event) => handleView(event, item.table)}>
+                            <IonButton expand="full" color="dark" onClick={(event) => handleView(event, item._id)}>
                                 <IonIcon icon={search} style={{ marginRight: '2px' }} color='light' />
                                 <IonText color='light'>View Order</IonText>
                             </IonButton>
@@ -147,6 +193,38 @@ const History = forwardRef((props, ref) => {
                     ))}
                 </>}
             </div>
+            <IonModal isOpen={modalView && cart.length > 0}>
+                <IonHeader>
+                    <IonToolbar>
+                        <IonTitle>Detail Order</IonTitle>
+                        <IonButtons slot="end">
+                            <IonButton onClick={() => setModalView(false)}>Close</IonButton>
+                        </IonButtons>
+                    </IonToolbar>
+                </IonHeader>
+                <IonContent>
+                    <IonCard>
+                        <IonCardHeader color={'primary'} style={{ textAlign: 'center' }}>
+                            <IonCardTitle>TABLE {order?.table_number}</IonCardTitle>
+                        </IonCardHeader>
+                        <IonCardContent>
+                            <DetailOrder items={cart} totalPaid={order?.total_paid} />
+                        </IonCardContent>
+                    </IonCard>
+                </IonContent>
+            </IonModal>
+            <IonInfiniteScroll
+                onIonInfinite={(event) => {
+                    const nextPage = page + 1
+                    setPage(nextPage)
+                    setTimeout(loadData, 500)
+                    setTimeout(() => event.target.complete(), 500);
+                }}
+            >
+                <IonInfiniteScrollContent>
+                    <IonInfiniteScrollContent loadingText="Please wait..." ></IonInfiniteScrollContent>
+                </IonInfiniteScrollContent>
+            </IonInfiniteScroll>
             <IonAlert
                 isOpen={errorReseponse !== ''}
                 header="Request Failed"
