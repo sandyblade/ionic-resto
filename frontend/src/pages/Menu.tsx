@@ -5,15 +5,14 @@ import {
     IonIcon,
     IonItem,
     IonList,
-    IonCard,
-    IonGrid,
-    IonCol
+    IonCard
 } from '@ionic/react';
 
 import { iceCream, pizza, wine, star, starOutline, refreshCircle } from 'ionicons/icons';
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import Service from "../Service"
 import { Shimmer } from 'react-shimmer'
+import Rating from '../components/Rating';
 
 const Menu = forwardRef((props, ref) => {
 
@@ -28,7 +27,7 @@ const Menu = forwardRef((props, ref) => {
     const [filter, setFilter] = useState("all")
     const [loading, setLoading] = useState(true)
     const [errorReseponse, setErrorResponse] = useState('')
-
+    const [maxRating, setMaxRating] = useState(0)
 
     const handleInput = (event: any) => {
         if (event.target.value) {
@@ -95,6 +94,12 @@ const Menu = forwardRef((props, ref) => {
                 const data = response.data
                 setItems(data)
                 setItemOriginial(data)
+
+                if (data.length > 0) {
+                    const top = data[0]
+                    setMaxRating(top.rating)
+                }
+
                 setTimeout(() => {
                     setLoading(false)
                 }, 1500)
@@ -114,6 +119,7 @@ const Menu = forwardRef((props, ref) => {
             setFilter('all')
             setLoading(true)
             setErrorResponse('')
+            setMaxRating(0)
         };
     }, []);
 
@@ -162,11 +168,7 @@ const Menu = forwardRef((props, ref) => {
                                     <br />
                                     <small style={{ fontWeight: 'bold', color: '#28a745' }}>{' '}${parseFloat(item.price['$numberDecimal'].toLocaleString()).toFixed(2)}</small>
                                     <br />
-                                    <IonIcon icon={star} style={{ fontSize: '10px' }} color='warning'></IonIcon>
-                                    <IonIcon icon={star} style={{ fontSize: '10px' }} color='warning'></IonIcon>
-                                    <IonIcon icon={star} style={{ fontSize: '10px' }} color='warning'></IonIcon>
-                                    <IonIcon icon={starOutline} style={{ fontSize: '10px' }} color='warning'></IonIcon>
-                                    <IonIcon icon={starOutline} style={{ fontSize: '10px' }} color='warning'></IonIcon>
+                                    <Rating maxRating={maxRating} rating={item.rating} />
                                 </IonLabel>
                                 {getCategory(item.category)}
                             </IonItem>

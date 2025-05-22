@@ -15,6 +15,13 @@ const Table = require('../models/table.model')
 const Menu = require('../models/menu.model')
 const validate = require('validate.js');
 
+
+async function tables(req, res){
+    let tables = await Table.find({ status: 1})
+    res.status(200).send(tables);
+    return;
+}
+
 async function save(req, res) {
 
     const rules = {
@@ -169,5 +176,6 @@ async function detail(req, res) {
 module.exports = {
     save,
     cancel,
-    detail
+    detail,
+    tables
 }

@@ -18,7 +18,8 @@ import {
     IonSelect,
     IonSelectOption,
     useIonLoading,
-    useIonToast
+    useIonToast,
+    IonCard
 } from '@ionic/react';
 import MenuList from '../stores/Menu';
 import { useState, useEffect } from "react";
@@ -38,15 +39,31 @@ import {
     close,
     remove,
     person,
-    cart
+    cart,
+    refreshCircle
 } from 'ionicons/icons';
 
+import { Shimmer } from 'react-shimmer'
+import Service from '../Service';
+import Rating from './Rating';
+import moment from 'moment'
+
 interface ICreateOrder { callback: any }
+
+interface userInterface {
+    email: string,
+    phone: string,
+    gender: string,
+    name: string,
+    address: string
+}
+
 
 const CreateOrder: React.FC<ICreateOrder> = (props: ICreateOrder) => {
 
     const [loading, setLoading] = useState(false);
     const [items, setItems] = useState<any[]>([]);
+    const [itemOriginal, setItemOriginial] = useState<any[]>([]);
     const [orders, setOrders] = useState<any[]>([]);
     const [totalPaid, setTotalPaid] = useState(0.0)
     const [filter, setFilter] = useState("all")
@@ -58,49 +75,35 @@ const CreateOrder: React.FC<ICreateOrder> = (props: ICreateOrder) => {
     const [saveOrderAlert] = useIonAlert();
     const [present, dismiss] = useIonLoading();
     const [toast] = useIonToast();
-
-    const generateItems = () => {
-        let item = MenuList.sort(() => Math.random() - 0.5);
-        const newItems = [];
-        const tableItems = []
-        for (let i = 0; i < item.length; i++) {
-            let menu = item[i]
-            let tableCode = String(i + 1).padStart(2, '0')
-            menu["qty"] = 1
-            menu["total"] = menu.price
-            newItems.push(menu);
-            tableItems.push(`TABLE ${tableCode}`)
-        }
-        let indexes = randomIntFromInterval(1, 1000)
-        let orderNumberGenerate = String(indexes).padStart(5, '0')
-        setOrderNumber(orderNumberGenerate)
-        setItems(newItems);
-        setTables(tableItems);
-    }
+    const [errorReseponse, setErrorResponse] = useState('')
+    const [maxRating, setMaxRating] = useState(0)
+    const [customerName, setCustomerName] = useState('')
+    const user: userInterface | null = (localStorage.getItem('auth_user') !== undefined && localStorage.getItem('auth_user') !== null) ? JSON.parse(String(localStorage.getItem('auth_user'))) : null
 
     const handleInput = (event: any) => {
         if (event.target.value) {
             let searchValue = event.target.value
             searchValue = searchValue.toLowerCase()
-            let searchItems = items.filter((item) => item.name.toLowerCase().includes(searchValue) || item.category.toLowerCase().includes(searchValue))
+            let searchItems = itemOriginal.filter((item) => item.name.toLowerCase().includes(searchValue) || item.category.toLowerCase().includes(searchValue))
             setItems(searchItems)
         } else {
-            generateItems()
+            setItems(itemOriginal)
         }
     }
 
-    const handleFilter = (event: any, type: string) => {
-        setFilter(type)
-        setTimeout(() => {
-            type = type.toLowerCase()
-            let searchItems = items.filter((item) => item.category.toLowerCase().includes(type))
+    const handleFilter = (event: any, category: string) => {
+        const e = event
+        e.preventDefault();
+        setFilter(category)
+        if (category === 'all') {
+            setItems(itemOriginal)
+        } else {
+            setItems(itemOriginal)
+            let searchItems = itemOriginal.filter((item) => item.category.toLowerCase().includes(category.toLowerCase()))
             if (searchItems.length > 0) {
                 setItems(searchItems)
-            } else {
-                generateItems()
-                setFilter("all")
             }
-        }, 500)
+        }
     }
 
     const handleItem = (event: any, menu: any) => {
@@ -198,19 +201,7 @@ const CreateOrder: React.FC<ICreateOrder> = (props: ICreateOrder) => {
                     text: 'Yes',
                     role: 'confirm',
                     handler: () => {
-                        present({
-                            message: 'Saving Order....',
-                            duration: 3000,
-                            spinner: "circular",
-                            onDidDismiss: (() => {
-                                toast({
-                                    message: 'Success, your order has been saved. !',
-                                    duration: 1500,
-                                    position: 'top',
-                                });
-                                props.callback()
-                            })
-                        });
+                        doProcess(0)
                     },
                 },
             ],
@@ -230,23 +221,45 @@ const CreateOrder: React.FC<ICreateOrder> = (props: ICreateOrder) => {
                     text: 'Yes',
                     role: 'confirm',
                     handler: () => {
-                        present({
-                            message: 'Order Checkout....',
-                            duration: 3000,
-                            spinner: "circular",
-                            onDidDismiss: (() => {
-                                toast({
-                                    message: 'Success, your order has been checkout. !',
-                                    duration: 1500,
-                                    position: 'top',
-                                });
-                                props.callback()
-                            })
-                        });
+                        doProcess(1)
                     },
                 },
             ]
         })
+    }
+
+    const doProcess = async (type: number) => {
+        const formData = {
+            customer_name: customerName,
+            order_type: type,
+            cart: orders,
+            table_number: tableSelected,
+            cashier_name: user?.name
+        }
+        present({ message: 'Please Wait.....', duration: 0, spinner: "circular" });
+        await Service.order.save(formData)
+            .then(() => {
+                setTimeout(() => {
+                    const msg = type === 1 ? 'Success, your order has been checkout. !' : 'Success, your order has been saved'
+                    toast({
+                        message: msg,
+                        duration: 1500,
+                        position: 'top',
+                    });
+                    setTimeout(() => {
+                        props.callback()
+                    }, 500)
+                }, 1500)
+            })
+            .catch((error) => {
+                const msg = error.status === 401 ? Service.expiredMessage : (error.message || error.response.data?.message)
+                setErrorResponse(msg)
+                toast({
+                    message: msg,
+                    duration: 1500,
+                    position: 'top',
+                });
+            })
     }
 
 
@@ -265,11 +278,18 @@ const CreateOrder: React.FC<ICreateOrder> = (props: ICreateOrder) => {
                     <IonLabel>Main Course</IonLabel>
                 </IonChip>
             )
-        } else {
+        } else if (name === 'Dessert') {
             return (
                 <IonChip color={"tertiary"}>
                     <IonIcon icon={wine}></IonIcon>
                     <IonLabel>Dessert</IonLabel>
+                </IonChip>
+            )
+        } else {
+            return (
+                <IonChip color={"secondary"}>
+                    <IonIcon icon={refreshCircle}></IonIcon>
+                    <IonLabel>All</IonLabel>
                 </IonChip>
             )
         }
@@ -279,14 +299,61 @@ const CreateOrder: React.FC<ICreateOrder> = (props: ICreateOrder) => {
         return Math.floor(Math.random() * (max - min + 1) + min)
     }
 
-
+    const loadData = async () => {
+        setLoading(true)
+        await Service.menu.list()
+            .then((response) => {
+                const indexes = randomIntFromInterval(1, 1000)
+                const orderNumberGenerate = String(indexes).padStart(5, '0')
+                const data = response.data
+                const menu: Array<any> = []
+                const tableItems: Array<string> = []
+                const dateIndex = moment(new Date()).format("YYYYMMDD")
+                data.map((m: any, i: number) => {
+                    const obj = {
+                        id: m._id,
+                        name: m.name,
+                        image: m.image,
+                        price: parseFloat(m.price['$numberDecimal']),
+                        category: m.category,
+                        rating: m.rating,
+                        qty: 1,
+                        total: parseFloat(m.price['$numberDecimal'])
+                    }
+                    const tableCode = String(i + 1).padStart(2, '0')
+                    menu.push(obj)
+                    tableItems.push(`T${tableCode}`)
+                })
+                if (data.length > 0) {
+                    const top = data[0]
+                    setMaxRating(top.rating)
+                }
+                setItems(menu)
+                setItemOriginial(menu)
+                setTables(tableItems)
+                setOrderNumber(`${dateIndex}${orderNumberGenerate}`)
+                setTimeout(() => {
+                    setLoading(false)
+                }, 1500)
+            })
+            .catch((error) => {
+                const msg = error.status === 401 ? Service.expiredMessage : (error.message || error.response.data?.message)
+                setErrorResponse(msg)
+            })
+    }
 
     useEffect(() => {
-        generateItems();
+        loadData();
         return () => {
             setItems([])
+            setItemOriginial([])
+            setFilter('all')
             setOrders([])
+            setLoading(true)
             setTotalPaid(0.0)
+            setMaxRating(0)
+            setCustomerName('')
+            setTableSelected('')
         };
     }, []);
 
@@ -296,46 +363,57 @@ const CreateOrder: React.FC<ICreateOrder> = (props: ICreateOrder) => {
                 <IonTab tab="order-menu">
                     <div id="order-menu-page">
                         <IonContent fullscreen={true}>
-                            <div>
-                                <IonSearchbar placeholder="Search Menu" showClearButton="always" debounce={1000} onIonInput={(event) => handleInput(event)}></IonSearchbar>
-                                <div style={{ textAlign: 'center' }}>
-                                    <IonChip color={"danger"} onClick={(event) => handleFilter(event, 'Appetizer')} disabled={filter === 'Appetizer'}>
-                                        <IonIcon icon={iceCream}></IonIcon>
-                                        <IonLabel>Appetizer</IonLabel>
-                                    </IonChip>
-                                    <IonChip color={"warning"} onClick={(event) => handleFilter(event, 'Main Course')} disabled={filter === 'Main Course'}>
-                                        <IonIcon icon={pizza}></IonIcon>
-                                        <IonLabel>Main Course</IonLabel>
-                                    </IonChip>
-                                    <IonChip color={"tertiary"} onClick={(event) => handleFilter(event, 'Dessert')} disabled={filter === 'Dessert'}>
-                                        <IonIcon icon={wine}></IonIcon>
-                                        <IonLabel>Dessert</IonLabel>
-                                    </IonChip>
+                            {loading ? <>
+                                {Array.from(Array(10), (e, i) => {
+                                    return (
+                                        <IonCard key={i} className='ion-margin-top'>
+                                            <Shimmer width={500} height={80} />
+                                        </IonCard>
+                                    )
+                                })}
+                            </> : <>
+                                <div>
+                                    <IonSearchbar placeholder="Search Menu" showClearButton="always" debounce={1000} onIonInput={(event) => handleInput(event)}></IonSearchbar>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <IonChip color={"danger"} onClick={(event) => handleFilter(event, 'Appetizer')} disabled={filter === 'Appetizer'}>
+                                            <IonIcon icon={iceCream}></IonIcon>
+                                            <IonLabel>Appetizer</IonLabel>
+                                        </IonChip>
+                                        <IonChip color={"warning"} onClick={(event) => handleFilter(event, 'Main Course')} disabled={filter === 'Main Course'}>
+                                            <IonIcon icon={pizza}></IonIcon>
+                                            <IonLabel>Main Course</IonLabel>
+                                        </IonChip>
+                                        <IonChip color={"tertiary"} onClick={(event) => handleFilter(event, 'Dessert')} disabled={filter === 'Dessert'}>
+                                            <IonIcon icon={wine}></IonIcon>
+                                            <IonLabel>Dessert</IonLabel>
+                                        </IonChip>
+                                        <IonChip color={"secondary"} onClick={(event) => handleFilter(event, 'all')} disabled={filter === 'all'}>
+                                            <IonIcon icon={refreshCircle}></IonIcon>
+                                            <IonLabel>All Category</IonLabel>
+                                        </IonChip>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className='ion-padding'>
-                                <IonList lines="none">
-                                    {items.map((item, index) => (
-                                        <IonItem key={index} className="ion-no-padding ion-margin-top" button={true} onClick={(event) => handleItem(event, item)}>
-                                            <div className='img-list'>
-                                                <img alt={item.name} className='image-cart' src={item.image} />
-                                            </div>
-                                            <IonLabel className="ion-text-wrap">
-                                                <small style={{ fontWeight: 'bold' }}> {item.name}</small>
-                                                <br />
-                                                <small style={{ fontWeight: 'bold', color: '#28a745' }}>{' '}${parseFloat(item.price).toFixed(2)}</small>
-                                                <br />
-                                                <IonIcon icon={star} style={{ fontSize: '10px' }} color='warning'></IonIcon>
-                                                <IonIcon icon={star} style={{ fontSize: '10px' }} color='warning'></IonIcon>
-                                                <IonIcon icon={star} style={{ fontSize: '10px' }} color='warning'></IonIcon>
-                                                <IonIcon icon={starOutline} style={{ fontSize: '10px' }} color='warning'></IonIcon>
-                                                <IonIcon icon={starOutline} style={{ fontSize: '10px' }} color='warning'></IonIcon>
-                                            </IonLabel>
-                                            {getCategory(item.category)}
-                                        </IonItem>
-                                    ))}
-                                </IonList>
-                            </div>
+                                <div className='ion-padding'>
+                                    <IonList lines="none">
+                                        {items.map((item, index) => (
+                                            <IonItem key={index} className="ion-no-padding ion-margin-top" button={true} onClick={(event) => handleItem(event, item)}>
+                                                <div className='img-list'>
+                                                    <img alt={item.name} className='image-cart' src={item.image} />
+                                                </div>
+                                                <IonLabel className="ion-text-wrap">
+                                                    <small style={{ fontWeight: 'bold' }}> {item.name}</small>
+                                                    <br />
+                                                    <small style={{ fontWeight: 'bold', color: '#28a745' }}>{' '}${parseFloat(item.price).toFixed(2)}</small>
+                                                    <br />
+                                                    <Rating maxRating={maxRating} rating={item.rating} />
+                                                </IonLabel>
+                                                {getCategory(item.category)}
+                                            </IonItem>
+                                        ))}
+                                    </IonList>
+                                </div>
+
+                            </>}
                         </IonContent>
                     </div>
                 </IonTab>
@@ -410,9 +488,16 @@ const CreateOrder: React.FC<ICreateOrder> = (props: ICreateOrder) => {
                                         id="txtCustomerName"
                                         clearInput={true}
                                         disabled={loading}
-                                        value={"John Doe"}
+                                        value={customerName}
                                         type="text"
                                         placeholder="Please Enter Customer Name"
+                                        onIonChange={(event: any) => {
+                                            if (event.target.value) {
+                                                setCustomerName(event.target.value)
+                                            } else {
+                                                setCustomerName('')
+                                            }
+                                        }}
                                     >
                                         <IonIcon slot="start" icon={person} aria-hidden="true"></IonIcon>
                                         <div slot="label">

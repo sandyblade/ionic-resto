@@ -113,9 +113,6 @@ const Profile: React.FC = () => {
                     .then(async (response) => {
                         setLoading(false)
                         let messsage = response.data.message
-
-                        console.log(response)
-
                         toast({
                             message: messsage,
                             duration: 1000,
