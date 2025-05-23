@@ -39,16 +39,43 @@ const History = forwardRef((props, ref) => {
     const [order, setOrder] = useState<any>();
     const [errorReseponse, setErrorResponse] = useState('')
     const [page, setPage] = useState(1)
-    const [limit, setLimit] = useState(10)
     const [search, setSearch] = useState('')
     const [modalView, setModalView] = useState(false);
     const [present, dismiss] = useIonLoading();
+    const limit: number = 10
 
     useImperativeHandle(ref, () => ({
         setLoadData() {
             loadData()
         }
     }));
+
+    const addMore = async (pageMore: number) => {
+
+        let params: any = {
+            page: pageMore,
+            limit: limit
+        }
+
+        if (search) {
+            params = {
+                ...params,
+                search: search
+            }
+        }
+
+        const filterQueryParam = decodeURIComponent(queryString.stringify(params))
+        await Service.history.list(filterQueryParam)
+            .then((response) => {
+                const data = response.data
+                setItems([...items, ...data])
+            })
+            .catch((error) => {
+                const msg = error.status === 401 ? Service.expiredMessage : (error.message || error.response.data?.message)
+                setErrorResponse(msg)
+            })
+
+    }
 
     const loadData = async () => {
 
@@ -70,7 +97,7 @@ const History = forwardRef((props, ref) => {
         await Service.history.list(filterQueryParam)
             .then((response) => {
                 const data = response.data
-                setItems([...items, ...data])
+                setItems(data)
                 setTimeout(() => {
                     setLoading(false)
                 }, 1500)
@@ -105,8 +132,6 @@ const History = forwardRef((props, ref) => {
         return () => {
             setItems([])
             setLoading(false)
-            setPage(1)
-            setLimit(10)
             setSearch('')
             setCart([])
             setOrder({})
@@ -148,13 +173,13 @@ const History = forwardRef((props, ref) => {
                             <IonCardContent className='ion-no-padding'>
                                 <IonList inset={true} lines="none">
                                     <IonItem>
-                                        <IonLabel>Order ID {++index}</IonLabel>
+                                        <IonLabel>Order ID </IonLabel>
                                         <IonNote slot="end">{item.order_number}</IonNote>
                                     </IonItem>
                                     <IonItem>
                                         <IonLabel>Order Type</IonLabel>
-                                        <IonNote slot="end" color={item.order_type === 1 ? 'success' : 'primary'}>
-                                            <IonIcon style={{ marginRight: '5px' }} icon={item.order_type === 1 ? fastFood : rocket} />{item.order_type === 1 ? 'Dine In' : 'Take Away'}
+                                        <IonNote slot="end" color={item.order_type === 'Dine In' ? 'success' : 'primary'}>
+                                            <IonIcon style={{ marginRight: '5px' }} icon={item.order_type === 'Dine In' ? fastFood : rocket} />{item.order_type}
                                         </IonNote>
                                     </IonItem>
                                     <IonItem>
@@ -169,7 +194,7 @@ const History = forwardRef((props, ref) => {
                                         <IonLabel>Casheir Name</IonLabel>
                                         <IonNote slot="end">{item.cashier_name}</IonNote>
                                     </IonItem>
-                                    {item.order_type === 1 ? <>
+                                    {item.order_type === 'Dine In' ? <>
                                         <IonItem>
                                             <IonLabel>Table</IonLabel>
                                             <IonNote slot="end">{item.table_number}</IonNote>
@@ -217,7 +242,9 @@ const History = forwardRef((props, ref) => {
                 onIonInfinite={(event) => {
                     const nextPage = page + 1
                     setPage(nextPage)
-                    setTimeout(loadData, 500)
+                    setTimeout(() => {
+                        addMore(nextPage)
+                    }, 500)
                     setTimeout(() => event.target.complete(), 500);
                 }}
             >

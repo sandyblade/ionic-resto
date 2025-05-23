@@ -39,8 +39,9 @@ router.get('/home/summary', home.summary);
 router.get('/menu/list', menu.list);
 
 // Order Section
+router.get('/order/pending', order.pending);
+router.get('/order/items', order.items);
 router.post('/order/save', order.save);
-router.delete('/order/cancel/:id', order.cancel);
 router.get('/order/detail/:id', order.detail);
 
 // Profile Section

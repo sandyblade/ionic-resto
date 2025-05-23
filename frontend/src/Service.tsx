@@ -88,11 +88,14 @@ const menu = {
 }
 
 const order = {
+    pending: async () => {
+        return await http().get('/api/order/pending')
+    },
+    item: async () => {
+        return await http().get('/api/order/items')
+    },
     save: async (body: unknown) => {
         return await http().post("/api/order/save", body)
-    },
-    cancel: async (id: string) => {
-        return await http().delete(`/api/order/cancel/${id}`)
     },
     detail: async (id: string) => {
         return await http().get(`/api/order/detail/${id}`)

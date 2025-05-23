@@ -21,7 +21,6 @@ import {
     useIonToast,
     IonCard
 } from '@ionic/react';
-import MenuList from '../stores/Menu';
 import { useState, useEffect } from "react";
 import {
     create,
@@ -31,8 +30,6 @@ import {
     iceCream,
     pizza,
     wine,
-    star,
-    starOutline,
     fastFood,
     cash,
     add,
@@ -48,7 +45,9 @@ import Service from '../Service';
 import Rating from './Rating';
 import moment from 'moment'
 
-interface ICreateOrder { callback: any }
+interface ICreateOrder {
+    callback: any
+}
 
 interface userInterface {
     email: string,
@@ -228,10 +227,12 @@ const CreateOrder: React.FC<ICreateOrder> = (props: ICreateOrder) => {
         })
     }
 
-    const doProcess = async (type: number) => {
+    const doProcess = async (status: number) => {
         const formData = {
+            order_number: orderNumber,
             customer_name: customerName,
-            order_type: type,
+            order_type: orderType === '1' ? 'Dine In' : 'Take Away',
+            status: orderType === '2' ? 1 : status,
             cart: orders,
             table_number: tableSelected,
             cashier_name: user?.name
@@ -240,14 +241,15 @@ const CreateOrder: React.FC<ICreateOrder> = (props: ICreateOrder) => {
         await Service.order.save(formData)
             .then(() => {
                 setTimeout(() => {
-                    const msg = type === 1 ? 'Success, your order has been checkout. !' : 'Success, your order has been saved'
+                    const msg = status === 1 ? 'Success, your order has been checkout. !' : 'Success, your order has been saved'
                     toast({
                         message: msg,
                         duration: 1500,
-                        position: 'top',
+                        position: 'bottom',
                     });
                     setTimeout(() => {
                         props.callback()
+                        dismiss()
                     }, 500)
                 }, 1500)
             })
@@ -301,15 +303,15 @@ const CreateOrder: React.FC<ICreateOrder> = (props: ICreateOrder) => {
 
     const loadData = async () => {
         setLoading(true)
-        await Service.menu.list()
+        await Service.order.item()
             .then((response) => {
                 const indexes = randomIntFromInterval(1, 1000)
                 const orderNumberGenerate = String(indexes).padStart(5, '0')
                 const data = response.data
+                const menus = data.menus
                 const menu: Array<any> = []
-                const tableItems: Array<string> = []
                 const dateIndex = moment(new Date()).format("YYYYMMDD")
-                data.map((m: any, i: number) => {
+                menus.map((m: any) => {
                     const obj = {
                         id: m._id,
                         name: m.name,
@@ -320,18 +322,17 @@ const CreateOrder: React.FC<ICreateOrder> = (props: ICreateOrder) => {
                         qty: 1,
                         total: parseFloat(m.price['$numberDecimal'])
                     }
-                    const tableCode = String(i + 1).padStart(2, '0')
                     menu.push(obj)
-                    tableItems.push(`T${tableCode}`)
                 })
-                if (data.length > 0) {
-                    const top = data[0]
+                if (menus.length > 0) {
+                    const top = menus[0]
                     setMaxRating(top.rating)
                 }
                 setItems(menu)
                 setItemOriginial(menu)
-                setTables(tableItems)
+                setTables(data.tables)
                 setOrderNumber(`${dateIndex}${orderNumberGenerate}`)
+                setCustomerName(`Customer ${orderNumberGenerate}`)
                 setTimeout(() => {
                     setLoading(false)
                 }, 1500)
@@ -523,7 +524,7 @@ const CreateOrder: React.FC<ICreateOrder> = (props: ICreateOrder) => {
                                                 Table<IonText color="danger">*</IonText>
                                             </div>
                                             {tables.map((aa, index) => (
-                                                <IonSelectOption key={index} value={aa}>{aa}</IonSelectOption>
+                                                <IonSelectOption key={index} value={aa.name}>{aa.name}</IonSelectOption>
                                             ))}
                                         </IonSelect>
                                     </IonItem>
@@ -546,13 +547,14 @@ const CreateOrder: React.FC<ICreateOrder> = (props: ICreateOrder) => {
                                 </IonItem>
                             </IonList>
                             {orderType === '1' ? <>
-                                <IonButton onClick={handleSaveDraft} expand="block">
+                                <IonButton disabled={customerName === ''} onClick={handleSaveDraft} expand="block">
                                     <IonIcon icon={create} style={{ marginRight: '2px' }} />  Save Order
                                 </IonButton>
-                            </> : <></>}
-                            <IonButton onClick={handleCheckOut} color={"danger"} expand="block">
-                                <IonIcon icon={bagCheck} color='light' style={{ marginRight: '2px' }} />  <IonText color='light'>Checkout Payment</IonText>
-                            </IonButton>
+                            </> : <>
+                                <IonButton disabled={customerName === ''} onClick={handleCheckOut} color={"danger"} expand="block">
+                                    <IonIcon icon={bagCheck} color='light' style={{ marginRight: '2px' }} />  <IonText color='light'>Checkout Payment</IonText>
+                                </IonButton>
+                            </>}
                         </>}
                     </div>
                 </IonTab>

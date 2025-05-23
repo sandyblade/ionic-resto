@@ -19,17 +19,24 @@ import {
     IonCardContent,
     IonCardHeader,
     IonCardTitle,
-    IonFabList
+    IonFabList,
+    IonList,
+    IonItem,
+    IonLabel,
+    IonNote,
+    IonText
 } from '@ionic/react';
-import { homeSharp, timeSharp, personOutline, search, wallet, restaurant, create, add, fastFood } from 'ionicons/icons';
+import { homeSharp, timeSharp, personOutline, search, wallet, restaurant, create, add, fastFood, rocket } from 'ionicons/icons';
 import Home from '../pages/Home';
 import Menu from '../pages/Menu';
 import History from '../pages/History';
 import Profile from '../pages/Profile';
-import DetailOrder from './DetailOrder';
 import CreateOrder from './CreateOrder';
 import CheckoutOrder from './CheckoutOrder';
+import DetailOrder from './DetailOrder';
 import { useState, useEffect, useCallback, useRef } from "react";
+import Service from '../Service';
+import { Shimmer } from 'react-shimmer'
 
 const MainLayout: React.FC = () => {
 
@@ -43,15 +50,11 @@ const MainLayout: React.FC = () => {
     const homeRef = useRef<any>(null);
     const historyRef = useRef<any>(null);
     const menuRef = useRef<any>(null);
-
-    const generateItems = (max: number) => {
-        const newItems = [];
-        for (let i = 1; i <= max; i++) {
-            let indexNumber = String(i).padStart(2, '0')
-            newItems.push(`TABLE ${indexNumber}`);
-        }
-        setItems(newItems);
-    };
+    const [order, setOrder] = useState<any[]>([]);
+    const [loadingOrder, setLoadingOrder] = useState(true)
+    const [detail, setDetail] = useState<any>();
+    const [cart, setCart] = useState<any[]>([]);
+    const [loadingCart, setLoadingCart] = useState(true)
 
     const handleTitle = (event: any) => {
         let tabTitle = event.detail.tab
@@ -72,12 +75,51 @@ const MainLayout: React.FC = () => {
         setModalCheckout(false)
         setModalCart(false)
         setModalView(false)
+        if (tab === 'home') {
+            homeRef.current?.setLoadData()
+        } else if (tab === 'history') {
+            historyRef.current?.setLoadData()
+        } else if (tab === 'menu') {
+            menuRef.current?.setLoadData()
+        }
     }, []);
 
+    const loadPending = async () => {
+        setLoadingOrder(true)
+        await Service.order.pending()
+            .then((response) => {
+                const data = response.data
+                setOrder(data)
+                setTimeout(() => {
+                    setLoadingOrder(false)
+                }, 1500)
+            })
+            .catch((error) => {
+                console.log(error)
+            })
+    }
+
+    const loadCart = async (id: string) => {
+        setLoadingCart(true)
+        await Service.order.detail(id)
+            .then((response) => {
+                const data = response.data.cart
+                setCart(data)
+                setTimeout(() => {
+                    setLoadingCart(false)
+                }, 1500)
+            })
+            .catch((error) => {
+                console.log(error)
+            })
+    }
+
     useEffect(() => {
-        generateItems(10);
         return () => {
             setItems([])
+            setOrder([])
+            setDetail({})
+            setCart([])
         };
     }, []);
 
@@ -145,7 +187,10 @@ const MainLayout: React.FC = () => {
                         <IonIcon icon={add}></IonIcon>
                     </IonFabButton>
                     <IonFabList side="top">
-                        <IonFabButton color="warning" onClick={() => setModalCart(true)}>
+                        <IonFabButton color="warning" onClick={() => {
+                            setModalCart(true)
+                            loadPending()
+                        }}>
                             <IonIcon icon={restaurant} color='light'></IonIcon>
                         </IonFabButton>
                         <IonFabButton color={"danger"} onClick={() => setModalCreate(true)}>
@@ -163,20 +208,74 @@ const MainLayout: React.FC = () => {
                         </IonToolbar>
                     </IonHeader>
                     <IonContent>
-                        {items.map((item, index) => (
-                            <IonCard key={index}>
-                                <IonCardHeader color={'primary'} style={{ textAlign: 'center' }}>
-                                    <IonCardTitle>{item}</IonCardTitle>
-                                </IonCardHeader>
-                                <IonCardContent>
-
-                                </IonCardContent>
-                                <div style={{ textAlign: 'center' }}>
-                                    <IonButton onClick={() => setModalView(true)} fill="clear" color={"warning"} size='small'><IonIcon icon={search} />{' '}View</IonButton>
-                                    <IonButton onClick={() => setModalCheckout(true)} fill="clear" color={"success"} size='small'><IonIcon icon={wallet} />{' '}Checkout</IonButton>
-                                </div>
-                            </IonCard>
-                        ))}
+                        {loadingOrder ? <>
+                            {Array.from(Array(10), (e, i) => {
+                                return (
+                                    <IonCard key={i} className='ion-margin-top'>
+                                        <Shimmer width={500} height={80} />
+                                    </IonCard>
+                                )
+                            })}
+                        </> : <>
+                            {order.map((item, index) => (
+                                <IonCard key={index}>
+                                    <IonCardHeader color={'primary'} style={{ textAlign: 'center' }}>
+                                        <IonCardTitle>{`TABLE ${item.table_number}`}</IonCardTitle>
+                                    </IonCardHeader>
+                                    <IonCardContent>
+                                        <IonList inset={true} lines="none">
+                                            <IonItem>
+                                                <IonLabel>Order ID {++index}</IonLabel>
+                                                <IonNote slot="end">{item.order_number}</IonNote>
+                                            </IonItem>
+                                            <IonItem>
+                                                <IonLabel>Order Type</IonLabel>
+                                                <IonNote slot="end" color={item.order_type === 'Dine In' ? 'success' : 'primary'}>
+                                                    <IonIcon style={{ marginRight: '5px' }} icon={item.order_type === 'Dine In' ? fastFood : rocket} />{item.order_type}
+                                                </IonNote>
+                                            </IonItem>
+                                            <IonItem>
+                                                <IonLabel>Order Date</IonLabel>
+                                                <IonNote slot="end">{item.created_at}</IonNote>
+                                            </IonItem>
+                                            <IonItem>
+                                                <IonLabel>Customer Name</IonLabel>
+                                                <IonNote slot="end">{item.customer_name}</IonNote>
+                                            </IonItem>
+                                            <IonItem>
+                                                <IonLabel>Casheir Name</IonLabel>
+                                                <IonNote slot="end">{item.cashier_name}</IonNote>
+                                            </IonItem>
+                                            {item.order_type === 'Dine In' ? <>
+                                                <IonItem>
+                                                    <IonLabel>Table</IonLabel>
+                                                    <IonNote slot="end">{item.table_number}</IonNote>
+                                                </IonItem>
+                                            </> : <></>}
+                                            <IonItem>
+                                                <IonLabel color={'primary'}>Total Item</IonLabel>
+                                                <IonNote slot="end" color={'primary'}>{item.total_item}</IonNote>
+                                            </IonItem>
+                                            <IonItem>
+                                                <IonLabel color={'danger'}>Total Paid</IonLabel>
+                                                <IonNote slot="end" color={'danger'}>{' '}${parseFloat(item.total_paid).toFixed(2)}</IonNote>
+                                            </IonItem>
+                                        </IonList>
+                                    </IonCardContent>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <IonButton onClick={() => {
+                                            setModalView(true)
+                                            setDetail(item)
+                                            loadCart(item._id)
+                                        }} fill="clear" color={"warning"} size='small'><IonIcon icon={search} />{' '}View</IonButton>
+                                        <IonButton onClick={() => {
+                                            setModalCheckout(true)
+                                            setDetail(item)
+                                        }} fill="clear" color={"success"} size='small'><IonIcon icon={wallet} />{' '}Checkout</IonButton>
+                                    </div>
+                                </IonCard>
+                            ))}
+                        </>}
                     </IonContent>
                 </IonModal>
                 <IonModal isOpen={modalView}>
@@ -191,10 +290,20 @@ const MainLayout: React.FC = () => {
                     <IonContent>
                         <IonCard>
                             <IonCardHeader color={'primary'} style={{ textAlign: 'center' }}>
-                                <IonCardTitle>{"TABLE 01"}</IonCardTitle>
+                                <IonCardTitle>{`TABLE ${detail?.table_number}`}</IonCardTitle>
                             </IonCardHeader>
                             <IonCardContent>
-
+                                {loadingCart ? <>
+                                    {Array.from(Array(10), (e, i) => {
+                                        return (
+                                            <IonCard key={i} className='ion-margin-top'>
+                                                <Shimmer width={500} height={80} />
+                                            </IonCard>
+                                        )
+                                    })}
+                                </> : <>
+                                    <DetailOrder items={cart} totalPaid={detail?.total_paid} />
+                                </>}
                             </IonCardContent>
                             <div style={{ textAlign: 'center' }}>
                                 <IonButton onClick={() => setModalCheckout(true)} fill="clear" color={"success"} size='small'><IonIcon icon={wallet} />{' '}Checkout</IonButton>
@@ -212,7 +321,7 @@ const MainLayout: React.FC = () => {
                         </IonToolbar>
                     </IonHeader>
                     <IonContent>
-                        <CheckoutOrder callback={finishOrder} />
+                        <CheckoutOrder callback={finishOrder} orderId={detail?._id} />
                     </IonContent>
                 </IonModal>
                 <IonModal isOpen={modalCreate}>

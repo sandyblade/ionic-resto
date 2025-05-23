@@ -3,7 +3,6 @@ import {
     IonLabel,
     IonList,
     IonText,
-    IonChip,
     IonButton,
     IonTabBar,
     IonContent,
@@ -12,7 +11,6 @@ import {
     IonTabs,
     IonIcon,
     IonTabButton,
-    IonSearchbar,
     IonNote,
     useIonAlert,
     IonSelect,
@@ -20,28 +18,34 @@ import {
     useIonLoading,
     useIonToast
 } from '@ionic/react';
-import MenuList from '../stores/Menu';
 import { useState, useEffect } from "react";
 import {
-    create,
     bagCheck,
     wineOutline,
     clipboard,
     iceCream,
-    pizza,
-    wine,
-    star,
-    starOutline,
     fastFood,
     cash,
     add,
     close,
     remove,
-    person,
-    cart
+    person
 } from 'ionicons/icons';
+import Service from '../Service';
+import { Shimmer } from 'react-shimmer'
 
-interface ICreateOrder { callback: any }
+interface ICreateOrder {
+    callback: any,
+    orderId: any
+}
+
+interface userInterface {
+    email: string,
+    phone: string,
+    gender: string,
+    name: string,
+    address: string
+}
 
 const CheckoutOrder: React.FC<ICreateOrder> = (props: ICreateOrder) => {
 
@@ -53,41 +57,64 @@ const CheckoutOrder: React.FC<ICreateOrder> = (props: ICreateOrder) => {
     const [checkoutAlert] = useIonAlert();
     const [present, dismiss] = useIonLoading();
     const [toast] = useIonToast();
+    const [customerName, setCustomerName] = useState('')
+    const [maxRating, setMaxRating] = useState(0)
+    const [loadingData, setLoadingData] = useState(false);
+    const [loadingSubmit, setLoadingSubmit] = useState(false);
+    const user: userInterface | null = (localStorage.getItem('auth_user') !== undefined && localStorage.getItem('auth_user') !== null) ? JSON.parse(String(localStorage.getItem('auth_user'))) : null
 
+    const loadData = async () => {
+        setLoadingData(true)
+        await Service.order.detail(props.orderId)
+            .then((response) => {
+                const data = response.data
+                const order = data.order
+                const cart = data.cart
+                const tables = data.tables
+                const additional = data.additional
+                const menu: Array<any> = []
+                const menu_names: Array<string> = []
 
-    const generateItems = () => {
-        let totalPaidTemp = 0
-        let item = MenuList.sort(() => Math.random() - 0.5);
-        const newItems = [];
-        const tableItems = []
-        for (let i = 0; i < item.length; i++) {
-            let qty = randomIntFromInterval(1, 10)
-            let menu = item[i]
-            let tableCode = String(i + 1).padStart(2, '0')
-            let exists = randomIntFromInterval(1, 2)
-            let total = menu.price * qty
-            menu["qty"] = exists === 1 ? qty : 0
-            menu["total"] = exists === 1 ? total : 0.0
-            newItems.push(menu);
-            tableItems.push(`TABLE ${tableCode}`)
-            totalPaidTemp = totalPaidTemp + total
-        }
-        let indexes = randomIntFromInterval(1, 1000)
-        let orderNumberGenerate = String(indexes).padStart(5, '0')
-        let tableCode = randomIntFromInterval(0, 10)
+                cart.map((m: any) => {
+                    const obj = {
+                        id: m._id,
+                        name: m.menu_name,
+                        image: m.menu_image,
+                        price: parseFloat(m.price['$numberDecimal']),
+                        qty: m.qty,
+                        total: parseFloat(m.total['$numberDecimal'])
+                    }
+                    menu.push(obj)
+                    menu_names.push(m.menu_name)
+                })
 
-        setOrderNumber(orderNumberGenerate)
-        setItems(newItems);
-        setTables(tableItems);
-        setTotalPaid(totalPaidTemp)
+                additional.map((a: any) => {
+                    if (!menu_names.includes(a.name)) {
+                        const obj = {
+                            id: a._id,
+                            name: a.name,
+                            image: a.image,
+                            price: parseFloat(a.price['$numberDecimal']),
+                            qty: 0,
+                            total: 0,
+                        }
+                        menu.push(obj)
+                    }
+                })
 
-        if (tableItems[tableCode]! == undefined) {
-            setTableSelected(tableItems[tableCode])
-        }
-    }
-
-    const randomIntFromInterval = (min: number, max: number) => {
-        return Math.floor(Math.random() * (max - min + 1) + min)
+                setTotalPaid(order.total_paid)
+                setOrderNumber(order.order_number)
+                setItems(menu)
+                setTables(tables)
+                setTableSelected(order.table_number)
+                setCustomerName(order.customer_name)
+                setTimeout(() => {
+                    setLoadingData(false)
+                }, 1500)
+            })
+            .catch((error) => {
+                console.log(error)
+            })
     }
 
     const handleSelected = (event: any) => {
@@ -106,20 +133,40 @@ const CheckoutOrder: React.FC<ICreateOrder> = (props: ICreateOrder) => {
                 {
                     text: 'Yes',
                     role: 'confirm',
-                    handler: () => {
-                        present({
-                            message: 'Checkout....',
-                            duration: 3000,
-                            spinner: "circular",
-                            onDidDismiss: (() => {
+                    handler: async () => {
+                        const orders = items.filter((x) => x.qty > 0)
+                        const formData = {
+                            order_number: orderNumber,
+                            customer_name: customerName,
+                            order_type: 'Dine In',
+                            status: 1,
+                            cart: orders,
+                            table_number: tableSelected,
+                            cashier_name: user?.name
+                        }
+                        present({ message: 'Please Wait.....', duration: 0, spinner: "circular" });
+                        await Service.order.save(formData)
+                            .then(() => {
+                                setTimeout(() => {
+                                    toast({
+                                        message: 'Success, your order has been checkout. !',
+                                        duration: 1500,
+                                        position: 'bottom',
+                                    });
+                                    setTimeout(() => {
+                                        props.callback()
+                                        dismiss()
+                                    }, 500)
+                                }, 1500)
+                            })
+                            .catch((error) => {
+                                const msg = error.status === 401 ? Service.expiredMessage : (error.message || error.response.data?.message)
                                 toast({
-                                    message: 'Success, your order has been checkout. !',
+                                    message: msg,
                                     duration: 1500,
                                     position: 'top',
                                 });
-                                props.callback()
                             })
-                        });
                     },
                 },
             ]
@@ -160,14 +207,17 @@ const CheckoutOrder: React.FC<ICreateOrder> = (props: ICreateOrder) => {
 
     const handleRemove = (event: any, item: any) => {
         let sum = 0
-        let updateOrders = items.filter((order) => order.name !== item.name);
-        items.map(mn => {
-            if (mn.name === item.name) {
-                let qty = parseInt(mn.qty) - 1
-                let total = parseFloat(mn.price) * qty
-                mn.qty = qty
-                mn.total = total
+        let updateOrders = items.map((order) => {
+            if (order.name === item.name) {
+                return { ...order, qty: 0, total: 0 };
             }
+            return order;
+        });
+        updateOrders.map(mn => {
+            let qty = parseInt(mn.qty)
+            let total = parseFloat(mn.price) * qty
+            mn.qty = qty
+            mn.total = total
             sum = sum + mn.total
             return mn;
         });
@@ -176,9 +226,12 @@ const CheckoutOrder: React.FC<ICreateOrder> = (props: ICreateOrder) => {
     }
 
     useEffect(() => {
-        generateItems();
+        loadData()
         return () => {
             setItems([])
+            setCustomerName('')
+            setTableSelected('')
+            setTables([])
         };
     }, []);
 
@@ -280,9 +333,16 @@ const CheckoutOrder: React.FC<ICreateOrder> = (props: ICreateOrder) => {
                                     labelPlacement="stacked"
                                     id="txtCustomerName"
                                     clearInput={true}
-                                    value={"John Doe"}
+                                    value={customerName}
                                     type="text"
                                     placeholder="Please Enter Customer Name"
+                                    onIonChange={(event: any) => {
+                                        if (event.target.value) {
+                                            setCustomerName(event.target.value)
+                                        } else {
+                                            setCustomerName('')
+                                        }
+                                    }}
                                 >
                                     <IonIcon slot="start" icon={person} aria-hidden="true"></IonIcon>
                                     <div slot="label">
@@ -297,7 +357,7 @@ const CheckoutOrder: React.FC<ICreateOrder> = (props: ICreateOrder) => {
                                         Table<IonText color="danger">*</IonText>
                                     </div>
                                     {tables.map((aa, index) => (
-                                        <IonSelectOption key={index} value={aa}>{aa}</IonSelectOption>
+                                        <IonSelectOption key={index} value={aa.name}>{aa.name}</IonSelectOption>
                                     ))}
                                 </IonSelect>
                             </IonItem>
@@ -318,7 +378,7 @@ const CheckoutOrder: React.FC<ICreateOrder> = (props: ICreateOrder) => {
                                 </IonInput>
                             </IonItem>
                         </IonList>
-                        <IonButton onClick={handleCheckOut} color={"danger"} expand="block">
+                        <IonButton disabled={totalPaid === 0 || tableSelected === '' || customerName === ''} onClick={handleCheckOut} color={"danger"} expand="block">
                             <IonIcon icon={bagCheck} color='light' style={{ marginRight: '2px' }} />  <IonText color='light'>Checkout Payment</IonText>
                         </IonButton>
                     </div>
